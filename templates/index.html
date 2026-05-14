@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejemplo API OpenRouter</title>
+    <!-- Usamos un framework CSS ligero (Pico CSS) para que se vea bien sin esfuerzo -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body { padding-top: 2rem; }
+        #chat-box {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+        .user-message { color: #007bff; text-align: right; }
+        .bot-message { color: #28a745; text-align: left; margin-bottom: 1rem;}
+        .loading { font-style: italic; color: #666; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>Entendiendo APIs con OpenRouter</h1>
+        <p>
+            Este ejemplo muestra cómo el frontend (esta página HTML/JS) hace una petición a tu backend (Python/Flask), 
+            el cual a su vez hace una petición a una API externa (OpenRouter) para obtener una respuesta usando Inteligencia Artificial.
+        </p>
+
+        <article>
+            <div id="chat-box">
+                <!-- Aquí aparecerán los mensajes -->
+            </div>
+            
+            <form id="chat-form">
+                <div class="grid">
+                    <input type="text" id="message-input" placeholder="Escribe tu mensaje aquí..." required>
+                    <button type="submit" id="submit-btn" style="width: auto;">Enviar</button>
+                </div>
+            </form>
+        </article>
+    </main>
+
+    <script>
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const chatBox = document.getElementById('chat-box');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // Función para añadir mensajes al recuadro del chat
+        function appendMessage(text, sender) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+            msgDiv.innerHTML = `<strong>${sender === 'user' ? 'Tú' : 'IA'}:</strong> ${text}`;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight; // Hacer scroll hacia abajo
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Evitar que la página se recargue
+
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // 1. Mostrar el mensaje del usuario
+            appendMessage(message, 'user');
+            messageInput.value = '';
+            
+            // Mostrar indicador de carga
+            const loadingId = 'loading-' + Date.now();
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = loadingId;
+            loadingDiv.className = 'bot-message loading';
+            loadingDiv.textContent = 'La IA está pensando (llamando a la API)...';
+            chatBox.appendChild(loadingDiv);
+
+            submitBtn.disabled = true;
+
+            try {
+                // 2. Hacer la petición AJAX/Fetch a NUESTRO backend (no directamente a OpenRouter)
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message }) // Enviamos en formato JSON
+                });
+
+                const data = await response.json();
+                
+                // Quitar indicador de carga
+                document.getElementById(loadingId).remove();
+
+                // 3. Procesar la respuesta del backend
+                if (response.ok) {
+                    appendMessage(data.reply, 'bot');
+                } else {
+                    appendMessage('Error: ' + (data.error || 'Algo salió mal.'), 'bot');
+                }
+            } catch (error) {
+                document.getElementById(loadingId).remove();
+                appendMessage('Error de conexión con el backend.', 'bot');
+                console.error('Error:', error);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
